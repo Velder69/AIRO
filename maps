@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Leaflet sample</title>
+      <link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
+      <script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+   </head>
+
+   <body>
+      <div id = "map" style = "width: 900px; height: 580px"></div>
+      <script>
+         // Creating map options
+         var mapOptions = {
+            center: [47.23132, 39.72326],
+            zoom: 10
+         }
+         
+         // Creating a map object
+         var map = new L.map('map', mapOptions);
+         
+         // Creating a Layer object
+         var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+         
+         // Adding layer to the map
+         map.addLayer(layer);
+
+          // Creating a marker
+          var marker = L.marker([47.223730, 39.732359]);
+         
+         // Adding popup to the marker
+         marker.bindPopup('ООО "МИП РГСУ "СтройДиагностика" 344022, Ростовская область, Ростов-на-дону город, Социалистическая улица, 162').openPopup();
+         marker.addTo(map); // Adding marker to the map
+         
+         // Adding marker to the map
+         marker.addTo(map);
+      </script>
+   </body>
+   
+</html>
