@@ -1,1 +1,149 @@
+import re
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
 
+def first_page(companies):
+	c_ref = []
+	c_name = []
+	c_status = []
+	c_reg_date = []
+	i = 0
+
+	for c in companies:
+		response = requests.get(c)
+
+		soup = BeautifulSoup(response.content, 'html.parser')
+		# локатор поиска инн
+		table = soup.find('table', class_='mb20 form-group input-group input-group-lg').get_text().split('\n')
+		ref = soup.find(itemprop="legalName").get('href')
+		name = soup.find(itemprop="legalName").get_text().split('\n')
+		name = name[0] if name[0] else name[1]
+		status = table[20]
+		reg_date = soup.find(itemprop="header__search-show").get_text()
+
+		c_ref.append(ref)
+		c_name.append(name)
+		c_status.append(status)
+		c_reg_date.append(reg_date)
+
+		i += 1
+		print(i, "выполнено")
+
+	return c_ref, c_name, c_status, c_reg_date
+
+def second_page(companies_pages):
+	ND = '#Н/Д'
+	INCOME = 'ГЕНЕРАЛЬНЫЙ ДИРЕКТОР: '
+	OUTCOME = 'Среднесп. численность '
+	TAX = 'Дата образования: '
+	TAX1 = 'Режим: '
+	TAX2 = 'Адрес регистрации: '
+	TAX3 = 'Вид деятельности: '
+	
+	c_code = []
+	c_income = []
+	c_outcome = []
+	c_tax = []
+	c_tax1 = []
+	c_tax2 = []
+	c_tax3 = []
+	
+	i = 0
+
+	for c in companies_pages:
+		income = outcome = tax = tax1 = tax2 = tax3  = ND
+
+		response = requests.get(c)
+
+		soup = BeautifulSoup(response.content, 'html.parser')
+
+		code = soup.find(itemprop="ui-ui").get_text().split()
+		try:
+			code = re.split(r'С', code[7])
+		except:
+			code = "Нет данных"
+		if code != "Нет данных":
+			code = code[2]
+		indicators = soup.find(class_="content-block__text mb-3").get_text().replace('Полное наименование','').replace('- ','').split('\n')   
+		for it in indicators:
+			if INCOME in it:
+				income = it.replace(INCOME,'').replace(RB,'')
+			if OUTCOME in it:
+				outcome = it.replace(OUTCOME,'').replace(RB,'')
+			if TAX in it:
+				tax = it.replace(TAX,'').replace(RB,'')
+			if TAX1 in it:
+				tax1 = it.replace(TAX1,'').replace(RB,'')
+			if TAX2 in it:
+				tax2 = it.replace(TAX2,'').replace(RB,'')
+			if TAX3 in it:
+				tax3 = it.replace(TAX3,'').replace(RB,'')
+			
+
+		c_code.append(code)
+		c_income.append(income)
+		c_outcome.append(outcome)
+		c_tax.append(tax)
+		c_tax1.append(tax1)
+		c_tax2.append(tax2)
+		c_tax3.append(tax3)
+		
+
+		i += 1
+		print(i, "еще выполнено")
+
+	return c_code, c_income, c_outcome, c_tax, c_tax1, c_tax2, c_tax3, 
+def main():
+	SITE = 'https://nalogovaya.ru/inn/okveds'
+	SEARCH = SITE + '/input-group-append=' 
+
+	file = 'in.xlsx'
+
+	df = pd.read_excel(file)
+
+	companies = []
+	for i in df.index:
+		companies.append(SEARCH + str(df['ИНН'][i]))
+
+	df['Поиск компании'] = companies
+
+	#парсинг первой страницы
+	one_page_col = first_page(companies)
+
+	df['Ссылка на компанию'] = one_page_col[0]
+	df['Название'] = one_page_col[1]
+	df['Статус'] = one_page_col[2]
+	df['Дата регистрации c сайта'] = one_page_col[3]
+	#/
+
+	companies_pages = []
+	for i in df.index:
+		companies_pages.append(SITE + df['Ссылка на компанию'][i])
+
+	df['Страница компании'] = companies_pages
+
+	#парсинг второй страницы
+	second_page_col = second_page(companies_pages)
+
+	df['ГЕНЕРАЛЬНЫЙ ДИРЕКТОР'] = second_page_col[0]
+	df['Среднесп. численность'] = second_page_col[1]
+	df['Дата образования'] = second_page_col[2]
+	df['Режим'] = second_page_col[3]
+	df['Адрес регистрации'] = second_page_col[4]
+	df['Вид деятельности'] = second_page_col[5]
+	
+	#/
+
+	
+
+	writer = pd.ExcelWriter('out.xlsx', engine='xlsxwriter')
+	df.to_excel(writer, sheet_name='Sheet1', index=False)
+	writer.save()
+
+	print(df)
+
+
+if __name__ == '__main__':
+	main()
+	#test()
